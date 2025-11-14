@@ -1,0 +1,24 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="randomitemgen"
+version="1.0.0"
+displayName="Random Item Generator"
+authors="Hau"
+description='''A block that generates random items in containers above it.'''
+
+[[dependencies.randomitemgen]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.randomitemgen]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,)"
+ordering="NONE"
+side="BOTH"
