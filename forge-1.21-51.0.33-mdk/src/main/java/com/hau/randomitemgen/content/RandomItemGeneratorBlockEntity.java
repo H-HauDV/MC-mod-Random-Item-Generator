@@ -9,7 +9,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.registries.NeoForgeRegistries; 
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.state.properties.ChestType;
 
@@ -22,7 +23,7 @@ public class RandomItemGeneratorBlockEntity extends BlockEntity {
     private static List<Item> ALL_ITEMS = null;
 
     public RandomItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.RANDOM_ITEM_GENERATOR.get(), pos, state);
+        super(ModBlockEntities.RANDOM_ITEM_GENERATOR_TYPE.get(), pos, state); 
     }
     
     // NEW HELPER METHOD: Attempts to insert one item into the container
@@ -74,7 +75,8 @@ public class RandomItemGeneratorBlockEntity extends BlockEntity {
             // --- END DOUBLE CHEST FIX ---
 
             if (ALL_ITEMS == null) {
-                ALL_ITEMS = new ArrayList<>(ForgeRegistries.ITEMS.getValues());
+                // FIX 2: Use BuiltInRegistries.ITEM to get all items
+                ALL_ITEMS = new ArrayList<>(BuiltInRegistries.ITEM.stream().toList());
             }
 
             if (ALL_ITEMS.isEmpty()) return;

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "C": {
+      "item": "minecraft:cobblestone"
+    },
+    "S": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    "CCC",
+    "SSS",
+    "CCC"
+  ],
+  "result": {
+    "count": 1,
+    "id": "randomitemgen:random_item_generator"
+  }
+}

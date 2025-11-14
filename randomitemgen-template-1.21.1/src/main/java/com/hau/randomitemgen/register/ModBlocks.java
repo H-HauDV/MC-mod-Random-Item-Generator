@@ -4,21 +4,28 @@ import com.hau.randomitemgen.RandomItemGen;
 import com.hau.randomitemgen.content.RandomItemGeneratorBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.RegistryObject;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraft.core.registries.Registries; 
+import net.neoforged.bus.api.IEventBus;
+
+import java.util.function.Supplier;
 
 public class ModBlocks {
 
+    // FIX: Use Registries.BLOCK
     public static final DeferredRegister<Block> BLOCKS =
-            DeferredRegister.create(ForgeRegistries.BLOCKS, RandomItemGen.MODID);
+            DeferredRegister.create(Registries.BLOCK, RandomItemGen.MODID);
 
-    public static final RegistryObject<Block> RANDOM_ITEM_GENERATOR =
-            BLOCKS.register("random_item_generator", 
-    () -> new RandomItemGeneratorBlock(Block.Properties.of().strength(1.5f).sound(SoundType.STONE)));
+    public static final Supplier<Block> RANDOM_ITEM_GENERATOR =
+            BLOCKS.register("random_item_generator",
+                    () -> new RandomItemGeneratorBlock(
+                            BlockBehaviour.Properties.of()
+                                    .strength(1.5f)
+                                    .sound(SoundType.STONE)
+                    ));
 
-    public static void register() {
-        BLOCKS.register(FMLJavaModLoadingContext.get().getModEventBus());
+    public static void register(IEventBus eventBus) {
+        BLOCKS.register(eventBus);
     }
 }

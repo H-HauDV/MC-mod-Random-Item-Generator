@@ -1,7 +1,7 @@
 {
   "itemGroup.randomitemgen": "Example Mod Tab",
-  "block.randomitemgen.example_block": "Example Block",
-  "item.randomitemgen.example_item": "Example Item",
+  "block.randomitemgen.random_item_generator": "Random Item Generator",
+  "item.randomitemgen.random_item_generator": "Random Item Generator",
 
   "randomitemgen.configuration.title": "Random item gen Configs",
   "randomitemgen.configuration.section.randomitemgen.common.toml": "Random item gen Configs",
