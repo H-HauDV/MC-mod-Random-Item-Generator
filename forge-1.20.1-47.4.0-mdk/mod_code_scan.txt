@@ -1,0 +1,235 @@
+--- FILE: .\src\main\java\com\hau\randomitemgen\RandomItemGen.java ---
+package com.hau.randomitemgen;
+
+import com.hau.randomitemgen.register.ModBlocks;
+import com.hau.randomitemgen.register.ModItems;
+import com.hau.randomitemgen.register.ModBlockEntities;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraft.world.item.CreativeModeTabs;
+
+@Mod(RandomItemGen.MODID)
+public class RandomItemGen {
+    public static final String MODID = "randomitemgen";
+
+    public RandomItemGen() {
+        ModBlocks.register();
+        ModItems.register();
+        ModBlockEntities.register();
+        FMLJavaModLoadingContext.get().getModEventBus().register(this);
+    }
+
+    @SubscribeEvent
+    public void addCreative(BuildCreativeModeTabContentsEvent event) {
+        if (event.getTabKey() == CreativeModeTabs.REDSTONE_BLOCKS) {
+            event.accept(ModItems.RANDOM_ITEM_GENERATOR.get());
+        }
+    }
+}
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\content\RandomItemGeneratorBlock.java ---
+package com.hau.randomitemgen.content;
+
+import com.hau.randomitemgen.register.ModBlockEntities;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+
+public class RandomItemGeneratorBlock extends BaseEntityBlock {
+
+    public RandomItemGeneratorBlock(Properties props) {
+        super(props);
+    }
+
+    @Override
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        return new RandomItemGeneratorBlockEntity(pos, state);
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+
+        return !level.isClientSide && type == ModBlockEntities.RANDOM_ITEM_GENERATOR.get()
+                ? (lvl, pos, st, be) -> RandomItemGeneratorBlockEntity.tick(lvl, pos, st, (RandomItemGeneratorBlockEntity) be)
+                : null;
+    }
+}
+
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\content\RandomItemGeneratorBlockEntity.java ---
+package com.hau.randomitemgen.content;
+
+import com.hau.randomitemgen.register.ModBlockEntities;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.world.level.block.ChestBlock; // <-- NEW IMPORT
+import net.minecraft.world.level.block.state.properties.ChestType; // <-- NEW IMPORT
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class RandomItemGeneratorBlockEntity extends BlockEntity {
+
+    private int tickCounter = 0;
+    private static List<Item> ALL_ITEMS = null;
+
+    public RandomItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
+        super(ModBlockEntities.RANDOM_ITEM_GENERATOR.get(), pos, state);
+    }
+
+    public static void tick(Level level, BlockPos pos, BlockState state, RandomItemGeneratorBlockEntity be) {
+        if (level.isClientSide) return;
+        if (!level.hasNeighborSignal(pos)) return; // Redstone check
+
+        be.tickCounter++;
+
+        if (be.tickCounter >= 20) {
+            be.tickCounter = 0;
+
+            // --- START FIX FOR DOUBLE CHESTS ---
+            BlockPos abovePos = pos.above();
+            BlockState aboveState = level.getBlockState(abovePos);
+            Container container;
+
+            // Check if the block above is a Chest
+            if (aboveState.getBlock() instanceof ChestBlock) {
+                // Use ChestBlock.getContainer to correctly resolve to a single or double chest wrapper.
+                container = ChestBlock.getContainer((ChestBlock) aboveState.getBlock(), aboveState, level, abovePos, true);
+            } else {
+                // For all other BlockEntities, use the old method (Hopper, Barrel, etc.)
+                BlockEntity aboveEntity = level.getBlockEntity(abovePos);
+                container = (aboveEntity instanceof Container) ? (Container) aboveEntity : null;
+            }
+
+            if (container == null) return;
+            // --- END FIX FOR DOUBLE CHESTS ---
+            
+            if (ALL_ITEMS == null) {
+                ALL_ITEMS = new ArrayList<>(ForgeRegistries.ITEMS.getValues());
+            }
+
+            if (ALL_ITEMS.isEmpty()) return;
+
+            Item randomItem = ALL_ITEMS.get(level.random.nextInt(ALL_ITEMS.size()));
+            ItemStack stack = new ItemStack(randomItem);
+
+            // The following logic will now use the resolved container, which includes both sides of a double chest.
+            for (int i = 0; i < container.getContainerSize(); i++) {
+                ItemStack slot = container.getItem(i);
+
+                if (slot.isEmpty()) {
+                    container.setItem(i, stack);
+                    container.setChanged();
+                    return;
+                } else if (slot.getItem() == stack.getItem() && slot.getCount() < slot.getMaxStackSize()) {
+                    slot.grow(1);
+                    container.setChanged();
+                    return;
+                }
+            }
+        }
+    }
+}
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\register\ModBlockEntities.java ---
+package com.hau.randomitemgen.register;
+
+import com.hau.randomitemgen.RandomItemGen;
+import com.hau.randomitemgen.content.RandomItemGeneratorBlockEntity;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+
+public class ModBlockEntities {
+
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES =
+            DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, RandomItemGen.MODID);
+
+    public static final RegistryObject<BlockEntityType<RandomItemGeneratorBlockEntity>> RANDOM_ITEM_GENERATOR =
+            BLOCK_ENTITIES.register("random_item_generator",
+                    () -> BlockEntityType.Builder.of(
+                            RandomItemGeneratorBlockEntity::new,
+                            ModBlocks.RANDOM_ITEM_GENERATOR.get()
+                    ).build(null));
+
+    public static void register() {
+        BLOCK_ENTITIES.register(FMLJavaModLoadingContext.get().getModEventBus());
+    }
+}
+
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\register\ModBlocks.java ---
+package com.hau.randomitemgen.register;
+
+import com.hau.randomitemgen.RandomItemGen;
+import com.hau.randomitemgen.content.RandomItemGeneratorBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+
+public class ModBlocks {
+
+    public static final DeferredRegister<Block> BLOCKS =
+            DeferredRegister.create(ForgeRegistries.BLOCKS, RandomItemGen.MODID);
+
+    public static final RegistryObject<Block> RANDOM_ITEM_GENERATOR =
+            BLOCKS.register("random_item_generator", 
+    () -> new RandomItemGeneratorBlock(Block.Properties.of().strength(1.5f).sound(SoundType.STONE)));
+
+    public static void register() {
+        BLOCKS.register(FMLJavaModLoadingContext.get().getModEventBus());
+    }
+}
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\register\ModItems.java ---
+package com.hau.randomitemgen.register;
+
+import com.hau.randomitemgen.RandomItemGen;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTabs;
+
+public class ModItems {
+
+    public static final DeferredRegister<Item> ITEMS =
+            DeferredRegister.create(ForgeRegistries.ITEMS, RandomItemGen.MODID);
+
+    public static final RegistryObject<Item> RANDOM_ITEM_GENERATOR =
+            ITEMS.register("random_item_generator",
+                    () -> new BlockItem(ModBlocks.RANDOM_ITEM_GENERATOR.get(),
+                            new Item.Properties()));
+
+    public static void register() {
+        ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
+    }
+}
+
+
