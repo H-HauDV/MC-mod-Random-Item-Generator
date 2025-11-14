@@ -14,7 +14,7 @@
     }
   },
   "result": {
-    "id": "randomitemgen:random_item_generator",
+    "item": "randomitemgen:random_item_generator",
     "count": 1
   }
 }

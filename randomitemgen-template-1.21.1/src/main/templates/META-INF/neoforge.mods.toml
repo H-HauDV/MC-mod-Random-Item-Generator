@@ -1,0 +1,30 @@
+
+# The name of the mod loader type to load - for regular FML @Mod mods it should be javafml
+modLoader="javafml" #mandatory
+
+# A version range to match for said mod loader - for regular FML @Mod it will be the FML version. This is currently 2.
+loaderVersion="${loader_version_range}" #mandatory
+
+license="MIT"
+
+[[mods]] #mandatory
+modId="randomitemgen"
+version="1.0.0"
+displayName="Random Item Generator"
+authors="Hau"
+description='''A block that generates random items in containers above it.'''
+
+[[dependencies.randomitemgen]]
+    modId="neoforge" #mandatory
+    type="required" #mandatory
+    versionRange="[${neo_version},)" #mandatory
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.randomitemgen]]
+    modId="minecraft"
+    type="required"
+    # This version range declares a minimum of the current minecraft version up to but not including the next major version
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"

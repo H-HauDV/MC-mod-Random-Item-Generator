@@ -1,0 +1,13 @@
+{
+  "itemGroup.randomitemgen": "Example Mod Tab",
+  "block.randomitemgen.example_block": "Example Block",
+  "item.randomitemgen.example_item": "Example Item",
+
+  "randomitemgen.configuration.title": "Random item gen Configs",
+  "randomitemgen.configuration.section.randomitemgen.common.toml": "Random item gen Configs",
+  "randomitemgen.configuration.section.randomitemgen.common.toml.title": "Random item gen Configs",
+  "randomitemgen.configuration.items": "Item List",
+  "randomitemgen.configuration.logDirtBlock": "Log Dirt Block",
+  "randomitemgen.configuration.magicNumberIntroduction": "Magic Number Text",
+  "randomitemgen.configuration.magicNumber": "Magic Number"
+}
