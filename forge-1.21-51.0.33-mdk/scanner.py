@@ -3,7 +3,7 @@ import os
 # === CONFIG ===
 ROOT_FOLDER = "."  # Root folder of your mod project
 OUTPUT_FILE = "mod_code_scan.txt"
-EXTENSIONS = (".java")  # File types to scan
+EXTENSIONS = (".java", ".json")  # File types to scan
 
 # === FUNCTION TO SCAN FILES ===
 def scan_files(root_folder, extensions):
