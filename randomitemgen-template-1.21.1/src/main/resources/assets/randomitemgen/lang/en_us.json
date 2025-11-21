@@ -1,7 +1,13 @@
 {
   "itemGroup.randomitemgen": "Example Mod Tab",
-  "block.randomitemgen.random_item_generator": "Random Item Generator",
-  "item.randomitemgen.random_item_generator": "Random Item Generator",
+  "block.randomitemgen.stackable_item_generator": "Random Stackable Item Generator",
+  "item.randomitemgen.stackable_item_generator": "Random Stackable Item Generator",
+
+  "block.randomitemgen.non_stackable_item_generator": "Random Non Stackable Item Generator",
+  "item.randomitemgen.non_stackable_item_generator": "Random Non Stackable Item Generator",
+
+  "block.randomitemgen.random_mod_generator": "Random Mod Item Generator",
+  "item.randomitemgen.random_mod_generator": "Random Mod Item Generator",
 
   "randomitemgen.configuration.title": "Random item gen Configs",
   "randomitemgen.configuration.section.randomitemgen.common.toml": "Random item gen Configs",

@@ -13,12 +13,11 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
 
 // NEW IMPORTS for Data Generation
-import net.neoforged.neoforge.data.event.GatherDataEvent; 
+import net.neoforged.neoforge.data.event.GatherDataEvent;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderLookup;
-
 
 @Mod(RandomItemGen.MODID)
 public class RandomItemGen {
@@ -29,15 +28,16 @@ public class RandomItemGen {
         ModItems.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         modEventBus.register(this);
-        
+
         // 2. NEW: Subscribe the gatherData method to the mod event bus
-        modEventBus.addListener(this::gatherData); 
+        modEventBus.addListener(this::gatherData);
     }
 
     @SubscribeEvent
     public void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.REDSTONE_BLOCKS) {
-            event.accept(ModItems.RANDOM_ITEM_GENERATOR.get());
+            event.accept(ModItems.STACKABLE_ITEM_GENERATOR.get());
+            event.accept(ModItems.NON_STACKABLE_ITEM_GENERATOR.get());
         }
     }
 
@@ -54,7 +54,7 @@ public class RandomItemGen {
     }
 }
 
---- FILE: .\src\main\java\com\hau\randomitemgen\content\RandomItemGeneratorBlock.java ---
+--- FILE: .\src\main\java\com\hau\randomitemgen\content\NonStackableItemGeneratorBlock.java ---
 package com.hau.randomitemgen.content;
 
 import com.hau.randomitemgen.register.ModBlockEntities;
@@ -70,12 +70,12 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import com.mojang.serialization.MapCodec;
 
-public class RandomItemGeneratorBlock extends BaseEntityBlock {
+public class NonStackableItemGeneratorBlock extends BaseEntityBlock {
 
-    // ✅ THE DEFINITIVE FINAL FIX: simpleCodec is static on BlockBehaviour, not BlockBehaviour.Properties
-    public static final MapCodec<RandomItemGeneratorBlock> CODEC = BlockBehaviour.simpleCodec(RandomItemGeneratorBlock::new);
-    
-    public RandomItemGeneratorBlock(Properties props) {
+    public static final MapCodec<NonStackableItemGeneratorBlock> CODEC = BlockBehaviour
+            .simpleCodec(NonStackableItemGeneratorBlock::new);
+
+    public NonStackableItemGeneratorBlock(Properties props) {
         super(props);
     }
 
@@ -91,21 +91,24 @@ public class RandomItemGeneratorBlock extends BaseEntityBlock {
 
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new RandomItemGeneratorBlockEntity(pos, state);
+        // Must return the Non-Stackable entity
+        return new NonStackableItemGeneratorBlockEntity(pos, state);
     }
 
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
             Level level, BlockState state, BlockEntityType<T> type) {
 
-        // Note: Assumes ModBlockEntities.RANDOM_ITEM_GENERATOR_TYPE.get() is a BlockEntityType
-        return !level.isClientSide && type == ModBlockEntities.RANDOM_ITEM_GENERATOR_TYPE.get() 
-                ? (lvl, pos, st, be) -> RandomItemGeneratorBlockEntity.tick(lvl, pos, st, (RandomItemGeneratorBlockEntity) be)
+        // Check for NON_STACKABLE BlockEntityType
+        return !level.isClientSide && type == ModBlockEntities.NON_STACKABLE_ITEM_GENERATOR_TYPE.get()
+                // Cast to the correct BlockEntity type
+                ? (lvl, pos, st, be) -> NonStackableItemGeneratorBlockEntity.tick(lvl, pos, st,
+                        (NonStackableItemGeneratorBlockEntity) be)
                 : null;
     }
 }
 
---- FILE: .\src\main\java\com\hau\randomitemgen\content\RandomItemGeneratorBlockEntity.java ---
+--- FILE: .\src\main\java\com\hau\randomitemgen\content\NonStackableItemGeneratorBlockEntity.java ---
 package com.hau.randomitemgen.content;
 
 import com.hau.randomitemgen.register.ModBlockEntities;
@@ -123,13 +126,155 @@ import net.minecraft.world.level.block.state.properties.ChestType;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RandomItemGeneratorBlockEntity extends BlockEntity {
+public class NonStackableItemGeneratorBlockEntity extends BlockEntity {
+
+    private int tickCounter = 0;
+    private static List<Item> ALL_ITEMS = null;
+
+    public NonStackableItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
+        super(ModBlockEntities.NON_STACKABLE_ITEM_GENERATOR_TYPE.get(), pos, state);
+    }
+
+    private static boolean tryInsertOneItem(Container container, ItemStack stackToInsert) {
+        for (int i = 0; i < container.getContainerSize(); i++) {
+            ItemStack slot = container.getItem(i);
+
+            // Only check for empty slots, as non-stackable items cannot merge/grow stacks
+            if (slot.isEmpty()) {
+                container.setItem(i, stackToInsert.copy());
+                container.setChanged();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void tick(Level level, BlockPos pos, BlockState state, NonStackableItemGeneratorBlockEntity be) {
+        if (level.isClientSide)
+            return;
+        if (!level.hasNeighborSignal(pos))
+            return;
+
+        be.tickCounter++;
+
+        if (be.tickCounter >= 20) {
+            be.tickCounter = 0;
+            BlockPos abovePos = pos.above();
+            BlockState aboveState = level.getBlockState(abovePos);
+            Container container;
+
+            if (aboveState.getBlock() instanceof ChestBlock) {
+                container = ChestBlock.getContainer((ChestBlock) aboveState.getBlock(), aboveState, level, abovePos, true);
+            } else {
+                BlockEntity aboveEntity = level.getBlockEntity(abovePos);
+                container = (aboveEntity instanceof Container) ? (Container) aboveEntity : null;
+            }
+
+            if (container == null)
+                return;
+
+            if (ALL_ITEMS == null) {
+                // Filter: Keep items that do NOT stack (max stack size == 1)
+                ALL_ITEMS = new ArrayList<>(BuiltInRegistries.ITEM.stream()
+                        .filter(item -> new ItemStack(item).getMaxStackSize() == 1)
+                        .toList());
+            }
+
+            if (ALL_ITEMS.isEmpty())
+                return;
+
+            // Primary Item Generation
+            Item randomNonStackableItem = ALL_ITEMS.get(level.random.nextInt(ALL_ITEMS.size()));
+            ItemStack stack = new ItemStack(randomNonStackableItem, 1);
+
+            // Attempt to insert the item
+            tryInsertOneItem(container, stack);
+            // Note: Since these items don't stack, the secondary duplication logic
+            // is not needed/effective, so we can stop here.
+        }
+    }
+
+}
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\content\StackableItemGeneratorBlock.java ---
+package com.hau.randomitemgen.content;
+
+import com.hau.randomitemgen.register.ModBlockEntities;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseEntityBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import com.mojang.serialization.MapCodec;
+
+public class StackableItemGeneratorBlock extends BaseEntityBlock {
+
+    public static final MapCodec<StackableItemGeneratorBlock> CODEC = BlockBehaviour
+            .simpleCodec(StackableItemGeneratorBlock::new);
+
+    public StackableItemGeneratorBlock(Properties props) {
+        super(props);
+    }
+
+    @Override
+    protected MapCodec<? extends BaseEntityBlock> codec() {
+        return CODEC;
+    }
+
+    @Override
+    public RenderShape getRenderShape(BlockState state) {
+        return RenderShape.MODEL;
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+        // FIX 1: Should return the correct, renamed BlockEntity
+        return new StackableItemGeneratorBlockEntity(pos, state);
+    }
+
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(
+            Level level, BlockState state, BlockEntityType<T> type) {
+
+        // FIX 2: Check for the correct BlockEntityType
+        return !level.isClientSide && type == ModBlockEntities.STACKABLE_ITEM_GENERATOR_TYPE.get()
+                // FIX 3: Cast to the correct BlockEntity type
+                ? (lvl, pos, st, be) -> StackableItemGeneratorBlockEntity.tick(lvl, pos, st,
+                        (StackableItemGeneratorBlockEntity) be)
+                : null;
+    }
+}
+
+--- FILE: .\src\main\java\com\hau\randomitemgen\content\StackableItemGeneratorBlockEntity.java ---
+package com.hau.randomitemgen.content;
+
+import com.hau.randomitemgen.register.ModBlockEntities;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.properties.ChestType;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class StackableItemGeneratorBlockEntity extends BlockEntity {
 
 private int tickCounter = 0;
     private static List<Item> ALL_ITEMS = null;
 
-    public RandomItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.RANDOM_ITEM_GENERATOR_TYPE.get(), pos, state);
+    public StackableItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
+        super(ModBlockEntities.STACKABLE_ITEM_GENERATOR_TYPE.get(), pos, state);
     }
 
     private static boolean tryInsertOneItem(Container container, ItemStack stackToInsert) {
@@ -151,7 +296,7 @@ private int tickCounter = 0;
         return false;
     }
 
-    public static void tick(Level level, BlockPos pos, BlockState state, RandomItemGeneratorBlockEntity be) {
+    public static void tick(Level level, BlockPos pos, BlockState state, StackableItemGeneratorBlockEntity be) {
         if (level.isClientSide) return;
         if (!level.hasNeighborSignal(pos)) return;
 
@@ -176,7 +321,10 @@ private int tickCounter = 0;
             // --- END DOUBLE CHEST FIX ---
 
             if (ALL_ITEMS == null) {
-                ALL_ITEMS = new ArrayList<>(BuiltInRegistries.ITEM.stream().toList());
+                    // Filter: Keep items that stack (max stack size > 1)
+                    ALL_ITEMS = new ArrayList<>(BuiltInRegistries.ITEM.stream()
+                        .filter(item -> new ItemStack(item).getMaxStackSize() > 1)
+                        .toList());
             }
             
             if (ALL_ITEMS.isEmpty()) return;
@@ -227,7 +375,7 @@ import net.minecraft.tags.ItemTags;
 import java.util.concurrent.CompletableFuture;
 
 public class ModRecipeProvider extends RecipeProvider {
-    
+
     // Constructor
     public ModRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider) {
         super(output, lookupProvider);
@@ -236,18 +384,19 @@ public class ModRecipeProvider extends RecipeProvider {
     @Override
     protected void buildRecipes(RecipeOutput output) {
 
-        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.RANDOM_ITEM_GENERATOR.get()) 
-            // The 3x3 pattern
-            .pattern("CCC")
-            .pattern("SSS")
-            .pattern("CCC")
-            // Define the keys: C is Cobblestone, S is Stick
-            .define('C', Items.COBBLESTONE)
-            .define('S', Items.STICK)
-            // Required: An "unlockedBy" condition, usually a simple ingredient
-            .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
-            // Save the recipe
-            .save(output);
+        // Recipe for STACKABLE
+        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.STACKABLE_ITEM_GENERATOR.get())
+                .pattern("CCC").pattern("SSS").pattern("CCC")
+                .define('C', Items.COBBLESTONE).define('S', Items.STICK)
+                .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
+                .save(output, RandomItemGen.MODID + ":stackable_item_generator");
+
+        // Recipe for UNSTACKABLE
+        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.NON_STACKABLE_ITEM_GENERATOR.get())
+                .pattern("CCC").pattern("III").pattern("CCC")
+                .define('C', Items.COBBLESTONE).define('I', Items.IRON_INGOT)
+                .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
+                .save(output, RandomItemGen.MODID + ":non_stackable_item_generator");
 
     }
 }
@@ -256,7 +405,8 @@ public class ModRecipeProvider extends RecipeProvider {
 package com.hau.randomitemgen.register;
 
 import com.hau.randomitemgen.RandomItemGen;
-import com.hau.randomitemgen.content.RandomItemGeneratorBlockEntity;
+import com.hau.randomitemgen.content.NonStackableItemGeneratorBlockEntity;
+import com.hau.randomitemgen.content.StackableItemGeneratorBlockEntity;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
@@ -266,24 +416,30 @@ import net.neoforged.bus.api.IEventBus;
 
 public class ModBlockEntities {
 
-    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
-            DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, RandomItemGen.MODID);
+        public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister
+                        .create(Registries.BLOCK_ENTITY_TYPE, RandomItemGen.MODID);
 
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RandomItemGeneratorBlockEntity>> RANDOM_ITEM_GENERATOR_TYPE =
-            BLOCK_ENTITY_TYPES.register("random_item_generator",
-                    () -> BlockEntityType.Builder.of(RandomItemGeneratorBlockEntity::new,
-                            ModBlocks.RANDOM_ITEM_GENERATOR.get()).build(null)); 
+        public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<StackableItemGeneratorBlockEntity>> STACKABLE_ITEM_GENERATOR_TYPE = BLOCK_ENTITY_TYPES
+                        .register("stackable_item_generator",
+                                        () -> BlockEntityType.Builder.of(StackableItemGeneratorBlockEntity::new,
+                                                        ModBlocks.STACKABLE_ITEM_GENERATOR.get()).build(null));
 
-    public static void register(IEventBus eventBus) {
-        BLOCK_ENTITY_TYPES.register(eventBus);
-    }
+        public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<NonStackableItemGeneratorBlockEntity>> NON_STACKABLE_ITEM_GENERATOR_TYPE = BLOCK_ENTITY_TYPES
+                        .register("non_stackable_item_generator",
+                                        () -> BlockEntityType.Builder.of(NonStackableItemGeneratorBlockEntity::new,
+                                                        ModBlocks.NON_STACKABLE_ITEM_GENERATOR.get()).build(null));
+
+        public static void register(IEventBus eventBus) {
+                BLOCK_ENTITY_TYPES.register(eventBus);
+        }
 }
 
 --- FILE: .\src\main\java\com\hau\randomitemgen\register\ModBlocks.java ---
 package com.hau.randomitemgen.register;
 
 import com.hau.randomitemgen.RandomItemGen;
-import com.hau.randomitemgen.content.RandomItemGeneratorBlock;
+import com.hau.randomitemgen.content.StackableItemGeneratorBlock; 
+import com.hau.randomitemgen.content.NonStackableItemGeneratorBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -299,13 +455,17 @@ public class ModBlocks {
     public static final DeferredRegister<Block> BLOCKS =
             DeferredRegister.create(Registries.BLOCK, RandomItemGen.MODID);
 
-    public static final Supplier<Block> RANDOM_ITEM_GENERATOR =
-            BLOCKS.register("random_item_generator",
-                    () -> new RandomItemGeneratorBlock(
-                            BlockBehaviour.Properties.of()
-                                    .strength(1.5f)
-                                    .sound(SoundType.STONE)
-                    ));
+        public static final Supplier<Block> STACKABLE_ITEM_GENERATOR =
+        BLOCKS.register("stackable_item_generator",
+                () -> new StackableItemGeneratorBlock(
+                BlockBehaviour.Properties.of()
+                        .strength(1.5f).sound(SoundType.STONE)));
+
+        public static final Supplier<Block> NON_STACKABLE_ITEM_GENERATOR =
+        BLOCKS.register("non_stackable_item_generator",
+                () -> new NonStackableItemGeneratorBlock(
+                BlockBehaviour.Properties.of()
+                        .strength(1.5f).sound(SoundType.STONE)));
 
     public static void register(IEventBus eventBus) {
         BLOCKS.register(eventBus);
@@ -321,24 +481,26 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.registries.DeferredRegister;
-import net.minecraft.core.registries.Registries; 
+import net.minecraft.core.registries.Registries;
 import net.neoforged.bus.api.IEventBus;
 
 import java.util.function.Supplier;
 
 public class ModItems {
 
-    public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(Registries.ITEM, RandomItemGen.MODID);
+        public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(Registries.ITEM,
+                        RandomItemGen.MODID);
 
-    public static final Supplier<Item> RANDOM_ITEM_GENERATOR =
-            ITEMS.register("random_item_generator",
-                    () -> new BlockItem(ModBlocks.RANDOM_ITEM_GENERATOR.get(),
-                            new Item.Properties() 
-                    ));
+        public static final Supplier<Item> STACKABLE_ITEM_GENERATOR = ITEMS.register("stackable_item_generator",
+                        () -> new BlockItem(ModBlocks.STACKABLE_ITEM_GENERATOR.get(),
+                                        new Item.Properties()));
 
-    public static void register(IEventBus eventBus) {
-        ITEMS.register(eventBus);
-    }
+        public static final Supplier<Item> NON_STACKABLE_ITEM_GENERATOR = ITEMS.register("non_stackable_item_generator",
+                        () -> new BlockItem(ModBlocks.NON_STACKABLE_ITEM_GENERATOR.get(),
+                                        new Item.Properties()));
+
+        public static void register(IEventBus eventBus) {
+                ITEMS.register(eventBus);
+        }
 }
 

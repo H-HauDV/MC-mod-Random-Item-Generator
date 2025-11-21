@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "randomitemgen:block/stackable_item_generator"
+    }
+  }
+}

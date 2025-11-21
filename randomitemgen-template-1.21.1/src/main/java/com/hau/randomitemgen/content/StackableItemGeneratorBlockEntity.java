@@ -10,18 +10,17 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.ChestBlock;
-import net.minecraft.world.level.block.state.properties.ChestType;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class RandomItemGeneratorBlockEntity extends BlockEntity {
+public class StackableItemGeneratorBlockEntity extends BlockEntity {
 
 private int tickCounter = 0;
     private static List<Item> ALL_ITEMS = null;
 
-    public RandomItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.RANDOM_ITEM_GENERATOR_TYPE.get(), pos, state);
+    public StackableItemGeneratorBlockEntity(BlockPos pos, BlockState state) {
+        super(ModBlockEntities.STACKABLE_ITEM_GENERATOR_TYPE.get(), pos, state);
     }
 
     private static boolean tryInsertOneItem(Container container, ItemStack stackToInsert) {
@@ -43,7 +42,7 @@ private int tickCounter = 0;
         return false;
     }
 
-    public static void tick(Level level, BlockPos pos, BlockState state, RandomItemGeneratorBlockEntity be) {
+    public static void tick(Level level, BlockPos pos, BlockState state, StackableItemGeneratorBlockEntity be) {
         if (level.isClientSide) return;
         if (!level.hasNeighborSignal(pos)) return;
 
@@ -68,7 +67,10 @@ private int tickCounter = 0;
             // --- END DOUBLE CHEST FIX ---
 
             if (ALL_ITEMS == null) {
-                ALL_ITEMS = new ArrayList<>(BuiltInRegistries.ITEM.stream().toList());
+                    // Filter: Keep items that stack (max stack size > 1)
+                    ALL_ITEMS = new ArrayList<>(BuiltInRegistries.ITEM.stream()
+                        .filter(item -> new ItemStack(item).getMaxStackSize() > 1)
+                        .toList());
             }
             
             if (ALL_ITEMS.isEmpty()) return;

@@ -5,17 +5,17 @@
     "C": {
       "item": "minecraft:cobblestone"
     },
-    "S": {
-      "item": "minecraft:stick"
+    "I": {
+      "item": "minecraft:iron_ingot"
     }
   },
   "pattern": [
     "CCC",
-    "SSS",
+    "III",
     "CCC"
   ],
   "result": {
     "count": 1,
-    "id": "randomitemgen:random_item_generator"
+    "id": "randomitemgen:non_stackable_item_generator"
   }
 }

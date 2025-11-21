@@ -1,3 +1,7 @@
-// 1.21.1	2025-11-15T02:21:27.2921959	Recipes
-90b87e9af399ae72c78d7e65798db87a10de7c04 data/randomitemgen/advancement/recipes/building_blocks/random_item_generator.json
-44de8d4e6352db172a49de356945813cdea98b5c data/randomitemgen/recipe/random_item_generator.json
+// 1.21.1	2025-11-19T20:10:56.3971569	Recipes
+abe83d9b7edd588066fce986283c3124cd6bdb52 data/randomitemgen/advancement/recipes/building_blocks/non_stackable_item_generator.json
+195e22345fe1e3cff0076791413a9fd4c45388ea data/randomitemgen/advancement/recipes/building_blocks/random_mod_generator.json
+e48e0c088470212f4dd8ff2ebb3c5bc2c16a1caf data/randomitemgen/advancement/recipes/building_blocks/stackable_item_generator.json
+9a59cb30d84431afcc8b7f68c22fe2fa50386b9a data/randomitemgen/recipe/non_stackable_item_generator.json
+02b4df89522cc01efefd0aacaee85d564abbe0d3 data/randomitemgen/recipe/random_mod_generator.json
+a2e7263398a92404b829d0ec6e62d2c22d5b3af4 data/randomitemgen/recipe/stackable_item_generator.json

@@ -15,7 +15,7 @@ import net.minecraft.tags.ItemTags;
 import java.util.concurrent.CompletableFuture;
 
 public class ModRecipeProvider extends RecipeProvider {
-    
+
     // Constructor
     public ModRecipeProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider) {
         super(output, lookupProvider);
@@ -24,18 +24,25 @@ public class ModRecipeProvider extends RecipeProvider {
     @Override
     protected void buildRecipes(RecipeOutput output) {
 
-        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.RANDOM_ITEM_GENERATOR.get()) 
-            // The 3x3 pattern
-            .pattern("CCC")
-            .pattern("SSS")
-            .pattern("CCC")
-            // Define the keys: C is Cobblestone, S is Stick
-            .define('C', Items.COBBLESTONE)
-            .define('S', Items.STICK)
-            // Required: An "unlockedBy" condition, usually a simple ingredient
-            .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
-            // Save the recipe
-            .save(output);
+        // Recipe for STACKABLE
+        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.STACKABLE_ITEM_GENERATOR.get())
+                .pattern("CCC").pattern("SSS").pattern("CCC")
+                .define('C', Items.COBBLESTONE).define('S', Items.STICK)
+                .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
+                .save(output);
 
+        // Recipe for UNSTACKABLE
+        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.NON_STACKABLE_ITEM_GENERATOR.get())
+                .pattern("CCC").pattern("III").pattern("CCC")
+                .define('C', Items.COBBLESTONE).define('I', Items.IRON_INGOT)
+                .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
+                .save(output);
+        // Recipe for RANDOM MOD GENERATOR
+        ShapedRecipeBuilder.shaped(RecipeCategory.BUILDING_BLOCKS, ModBlocks.RANDOM_MOD_GENERATOR.get())
+                .pattern("CCC").pattern("DDD").pattern("CCC")
+                .define('C', Items.COBBLESTONE)
+                .define('D', Items.DIAMOND)
+                .unlockedBy(getHasName(Items.COBBLESTONE), has(Items.COBBLESTONE))
+                .save(output);
     }
 }

@@ -12,12 +12,11 @@ import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
 
 // NEW IMPORTS for Data Generation
-import net.neoforged.neoforge.data.event.GatherDataEvent; 
+import net.neoforged.neoforge.data.event.GatherDataEvent;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.PackOutput;
 import java.util.concurrent.CompletableFuture;
 import net.minecraft.core.HolderLookup;
-
 
 @Mod(RandomItemGen.MODID)
 public class RandomItemGen {
@@ -28,15 +27,17 @@ public class RandomItemGen {
         ModItems.register(modEventBus);
         ModBlockEntities.register(modEventBus);
         modEventBus.register(this);
-        
+
         // 2. NEW: Subscribe the gatherData method to the mod event bus
-        modEventBus.addListener(this::gatherData); 
+        modEventBus.addListener(this::gatherData);
     }
 
     @SubscribeEvent
     public void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.REDSTONE_BLOCKS) {
-            event.accept(ModItems.RANDOM_ITEM_GENERATOR.get());
+            event.accept(ModItems.STACKABLE_ITEM_GENERATOR.get());
+            event.accept(ModItems.NON_STACKABLE_ITEM_GENERATOR.get());
+            event.accept(ModItems.RANDOM_MOD_GENERATOR.get());
         }
     }
 

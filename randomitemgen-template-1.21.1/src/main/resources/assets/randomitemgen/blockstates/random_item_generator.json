@@ -1,7 +1,0 @@
-{
-  "variants": {
-    "": {
-      "model": "randomitemgen:block/random_item_generator"
-    }
-  }
-}
